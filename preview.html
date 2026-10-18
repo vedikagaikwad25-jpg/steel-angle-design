@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FA-2 | Editable Steel Angle Design Calculator</title>
+<style>
+:root{color-scheme:light;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#23354d;background:#f3f6fa}
+*{box-sizing:border-box}body{margin:0} main{max-width:1220px;padding:24px 18px 66px;margin:auto}
+header{padding:26px 30px;background:linear-gradient(125deg,#143553,#17618b);border-radius:16px;color:white;box-shadow:0 12px 32px #1e385020}
+header h1{font-size:clamp(1.35rem,3vw,2rem);margin:0} header p{font-size:14px;color:#d6e6f6;margin:6px 0 0}
+.tag{font-weight:700;font-size:12px;letter-spacing:.6px;display:inline-block;padding:4px 9px;background:#ffffff22;border-radius:99px;margin-bottom:10px}
+.scope{border-left:4px solid #3d83ba;background:#e5f1ff;color:#245274;padding:13px 17px;border-radius:9px;margin:18px 0;font-size:14px;line-height:1.55}
+.workspace{display:grid;grid-template-columns:minmax(320px,480px) minmax(380px,1fr);gap:18px;align-items:start}
+.panel{background:white;border:1px solid #dfe7f1;border-radius:14px;padding:22px;box-shadow:0 7px 26px #1b31400a}
+.panel h2{font-size:19px;margin:0 0 12px;color:#143d60}.panel h3{font-size:15px;margin:22px 0 9px;border-bottom:1px solid #e8eef4;padding-bottom:8px;color:#265078}
+.label{display:block;font-size:13px;font-weight:650;margin:11px 0 6px} input:not([type=radio]),select{display:block;width:100%;padding:11px;border-radius:9px;border:1px solid #b5c7da;background:#fbfdff;color:#23354d;font:inherit;font-size:14px;min-height:44px}
+input:focus,select:focus,button:focus-visible{outline:2px solid #2797ee;outline-offset:2px} .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.options{display:flex;gap:18px;flex-wrap:wrap;font-size:14px;margin:10px 0}.options label{cursor:pointer}.options input{accent-color:#176aa8}
+small,.subtle{color:#697d91;font-size:12px;line-height:1.6}.subtle{margin:7px 0 0}
+button{font:inherit;font-weight:700;padding:11px 14px;border:1px solid #bdd0e3;border-radius:9px;color:#1d4e75;background:white;cursor:pointer}
+button:hover{background:#eff7ff}button.primary{background:#176aa8;color:white;border-color:#176aa8}button.primary:hover{background:#105480}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.actions button{flex:1}button:disabled{opacity:.45;cursor:not-allowed}
+.status{font-weight:700;font-size:12px;padding:5px 9px;border-radius:99px;background:#e3f4ea;color:#1d754b;display:inline-block}
+.banner{border-radius:9px;padding:12px 14px;font-size:14px;line-height:1.55;margin:8px 0 14px}.banner.error{background:#fff1f0;border:1px solid #ffc1be;color:#982b28}.banner.success{background:#e9f8f0;border:1px solid #a7e1c0;color:#17643c}.banner.warn{background:#fff7e5;border:1px solid #f4d59a;color:#7e570b}
+.check{padding:13px 15px;border-radius:10px;border:1px solid #d8e5ec;margin:9px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.check .result{font-weight:800}.check.pass{border-color:#b7e7cf;background:#f1fbf6}.check.pass .result{color:#0f7449}.check.fail{border-color:#ffc8c5;background:#fff3f1}.check.fail .result{color:#b62c30}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:14px 0}.stat{padding:14px 9px;border:1px solid #e1e8f1;background:#f5f8fc;border-radius:10px}.stat small{display:block;font-size:11px}.stat strong{display:block;font-size:clamp(15px,2vw,20px);margin:6px 0 0;color:#143d60;word-break:break-word}
+.details{border:1px solid #e0e9f2;border-radius:9px;padding:12px;margin:12px 0;background:#fff}
+summary{font-weight:700;cursor:pointer;color:#194e76} .step{border-top:1px solid #e6ebf1;margin-top:13px;padding-top:13px;line-height:1.65;font-size:13px}
+.formula{font:14px ui-monospace,SFMono-Regular,Consolas,monospace;background:#edf3f9;border-radius:7px;padding:9px;margin:7px 0;overflow-wrap:anywhere}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}th,td{border-bottom:1px solid #e6edf4;padding:7px 5px;text-align:left;vertical-align:top}th{color:#5a7188;width:48%}
+.muted{color:#6b7c8a}.divider{height:1px;background:#e5ebf3;margin:18px 0}.fine{font-size:12px;color:#6d7d90;line-height:1.6;margin-top:12px}
+.hidden{display:none!important}a{color:#176aa8;overflow-wrap:anywhere}
+@media(max-width:930px){.workspace{grid-template-columns:1fr}.panel{padding:18px}}
+@media(max-width:560px){main{padding:12px 10px 40px}header{padding:21px}.cols,.stats{grid-template-columns:1fr 1fr}.stats .stat:last-child{grid-column:1 / -1}}
+</style>
+</head>
+<body>
+<main>
+<header><span class="tag">FA-2 · INTERACTIVE OFFLINE CALCULATOR</span><h1>Steel Angle Tension Member Checker</h1><p>Educational demonstration — Python / Streamlit project companion preview · IS 800:2007</p></header>
+<div class="scope"><b>This preview is interactive.</b> Edit inputs below to recalculate instantly; no terminal required for the preview. This is a separately implemented browser calculator checked against the Python examples, not the Streamlit server. Only a single rolled angle bolted through one leg in one straight longitudinal bolt line is evaluated; confirm the IS standard and your Steel Book.</div>
+<div class="workspace">
+<section class="panel" aria-label="Editable project inputs">
+  <h2>Editable design inputs <span class="status">LIVE</span></h2>
+  <p class="subtle">Change any field. The three checks and formulas update automatically.</p>
+  <h3>1. Choose structural member</h3>
+  <div class="options"><label><input type="radio" name="member_type" value="Tensile member" checked> Tensile member</label><label><input type="radio" name="member_type" value="Compressive member"> Compressive member</label></div>
+  <h3>2. Applied axial force</h3>
+  <label class="label" for="force_kn">Factored axial load (kN)</label><input id="force_kn" type="number" value="120" min="0.01" step="any" />
+  <h3>3. Material properties</h3>
+  <label class="label" for="steel_grade">Steel grade / reference</label>
+  <select id="steel_grade"><option>E250 (illustrative only)</option><option>Other grade / custom values</option></select>
+  <p class="subtle">fy and fu are editable values and must be confirmed for the actual steel grade.</p>
+  <div class="cols"><div><label class="label" for="fy_mpa">Yield stress fy (MPa)</label><input id="fy_mpa" type="number" value="250" min="0.01" step="any" /></div>
+  <div><label class="label" for="fu_mpa">Ultimate stress fu (MPa)</label><input id="fu_mpa" type="number" value="410" min="0.01" step="any" /></div></div>
+  <h3>4. Bolted connection</h3>
+  <p class="subtle">One straight line through the connected leg. Enter hole diameter (not bolt diameter). Gauge measured from heel.</p>
+  <div class="cols">
+    <div><label class="label" for="bolts_in_line">Number of bolts (n)</label><input id="bolts_in_line" type="number" value="3" min="2" max="30" step="1" /></div>
+    <div><label class="label" for="hole_diameter_mm">Hole diameter d₀ (mm)</label><input id="hole_diameter_mm" type="number" value="18" min="0.01" step="any" /></div>
+    <div><label class="label" for="pitch_mm">Pitch p (mm)</label><input id="pitch_mm" type="number" value="60" min="0.01" step="any" /></div>
+    <div><label class="label" for="end_distance_mm">End distance e (mm)</label><input id="end_distance_mm" type="number" value="40" min="0.01" step="any" /></div>
+    <div><label class="label" for="gauge_mm">Gauge from heel g (mm)</label><input id="gauge_mm" type="number" value="35" min="0.01" step="any" /></div>
+  </div>
+  <h3>5. Enter your angle (last)</h3>
+  <label class="label" for="section">Steel Book designation</label><input id="section" list="angleOptions" value="ISA 75x75x6" placeholder="ISA 75x75x6" autocomplete="off" />
+  <datalist id="angleOptions"></datalist>
+  <p class="subtle" id="angleHint"></p>
+  <div class="actions"><button id="defaultButton" type="button">Reset inputs</button><button id="saveButton" type="button" class="primary">Download results</button></div>
+  <div class="divider"></div>
+  <small>Demo examples:</small>
+  <div class="actions"><button type="button" data-example="pass">PASS example</button><button type="button" data-example="fail">FAIL example</button><button type="button" data-example="invalid">Invalid section</button></div>
+</section>
+<section class="panel" id="results" aria-label="Live engineering calculations" aria-live="polite">
+  <h2>Three design checks</h2>
+  <div id="message"></div>
+  <div id="calculated">
+    <div id="checks"></div>
+    <div class="stats"><div class="stat"><small>Design tensile strength</small><strong id="capacity">—</strong></div>
+    <div class="stat"><small>Utilization = Load / Strength</small><strong id="ratio">—</strong></div>
+    <div class="stat"><small>Three checks</small><strong id="overall">—</strong></div></div>
+    <p id="governing"></p>
+    <details class="details" open><summary>Step-by-step calculations</summary><div id="workedSteps"></div></details>
+    <details class="details"><summary>Inputs and section properties</summary><div id="inputDetails"></div></details>
+    <h3>Educational explanation</h3><p id="explanation" class="fine"></p>
+    <div class="banner warn"><b>Limits:</b> This PASS only covers the three implemented checks for the assumed bolt layout. It does not verify all possible block-shear paths, bolt strength/bearing, gusset capacity, detailing or member slenderness. Academic/professional verification using the actual standard and Steel Book is still required.</div>
+  </div>
+</section>
+</div>
+<p class="fine">Reference provisions: IS 800:2007 Clauses 6.2 (gross yielding), 6.3.3 (single-angle rupture with shear lag), 6.4.1 (block shear), Table 5 (partial factors). The clause 6.3.3 beta cap is adjusted for Amendment No. 1 (2012). Source data: section shortlist from the project's data/angles.csv, which must be compared with your institution's Steel Book. This preview uses the same equations as engine.py but is an independent JavaScript implementation for offline use.</p>
+</main>
+<script>const CATALOG = [{"section": "ISA 50x50x5", "a_mm": 50.0, "b_mm": 50.0, "t_mm": 5.0, "gross_area_mm2": 483.0, "source_url": "https://quickboq.in/steel/angle-50x50x5/"}, {"section": "ISA 65x65x6", "a_mm": 65.0, "b_mm": 65.0, "t_mm": 6.0, "gross_area_mm2": 753.0, "source_url": "https://quickboq.in/steel/angle-65x65x6/"}, {"section": "ISA 75x75x6", "a_mm": 75.0, "b_mm": 75.0, "t_mm": 6.0, "gross_area_mm2": 875.0, "source_url": "https://quickboq.in/steel/angle-75x75x6/"}, {"section": "ISA 75x75x8", "a_mm": 75.0, "b_mm": 75.0, "t_mm": 8.0, "gross_area_mm2": 1140.0, "source_url": "https://quickboq.in/steel/angle-75x75x8/"}, {"section": "ISA 80x80x6", "a_mm": 80.0, "b_mm": 80.0, "t_mm": 6.0, "gross_area_mm2": 938.0, "source_url": "https://quickboq.in/steel/angle-80x80x6/"}, {"section": "ISA 80x80x8", "a_mm": 80.0, "b_mm": 80.0, "t_mm": 8.0, "gross_area_mm2": 1230.0, "source_url": "https://quickboq.in/steel/tables/angles/"}, {"section": "ISA 90x90x8", "a_mm": 90.0, "b_mm": 90.0, "t_mm": 8.0, "gross_area_mm2": 1390.0, "source_url": "https://quickboq.in/steel/angle-90x90x8/"}, {"section": "ISA 100x100x6", "a_mm": 100.0, "b_mm": 100.0, "t_mm": 6.0, "gross_area_mm2": 1180.0, "source_url": "https://quickboq.in/steel/tables/angles/"}, {"section": "ISA 100x100x8", "a_mm": 100.0, "b_mm": 100.0, "t_mm": 8.0, "gross_area_mm2": 1550.0, "source_url": "https://quickboq.in/steel/angle-100x100x8/"}, {"section": "ISA 100x100x10", "a_mm": 100.0, "b_mm": 100.0, "t_mm": 10.0, "gross_area_mm2": 1910.0, "source_url": "https://quickboq.in/steel/angle-100x100x10/"}, {"section": "ISA 100x75x8", "a_mm": 100.0, "b_mm": 75.0, "t_mm": 8.0, "gross_area_mm2": 1350.0, "source_url": "https://quickboq.in/steel/angle-100x75x8/"}];</script>
+<script id="engine-script">/* Offline browser calculator equivalent to engine.py for the educational
+   single rolled angle / one-leg / one-longitudinal bolt-row assumption.
+   Keep this in parity with engine.py and its reference tests.
+*/
+window.SteelCalculator = (() => {
+  "use strict";
+  const gammaM0 = 1.10;
+  const gammaM1 = 1.25;
+  function normalizeSection(value) {
+    const text = String(value || "").trim().toUpperCase()
+      .replaceAll("×", "X").replaceAll("∠", "").replace(/\s+/g, "").replace(/^(ISA|L)/, "");
+    if (!/^\d+(?:\.0+)?X\d+(?:\.0+)?X\d+(?:\.0+)?$/.test(text)) return "";
+    return text.split("X").map(n => String(parseInt(n, 10))).join("X");
+  }
+  function findAngle(input, catalog) {
+    const key = normalizeSection(input);
+    const angle = catalog.find(row => normalizeSection(row.section) === key);
+    if (!angle) throw new Error("please select correct section");
+    return angle;
+  }
+  function numeric(value, label) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) throw new Error(label + " must be a positive finite number.");
+    return n;
+  }
+  function calculate(raw, catalog) {
+    if (raw.member_type !== "Tensile member") {
+      throw new Error("Compression needs separate IS 800 Section 7 buckling checks. No tension PASS/FAIL is available for compression.");
+    }
+    const angle = findAngle(raw.section, catalog);
+    const force = numeric(raw.force_kn, "Factored force (kN)");
+    const fy = numeric(raw.fy_mpa, "Yield stress fy (MPa)");
+    const fu = numeric(raw.fu_mpa, "Ultimate stress fu (MPa)");
+    const n = numeric(raw.bolts_in_line, "Bolts in line");
+    const d = numeric(raw.hole_diameter_mm, "Hole diameter (mm)");
+    const p = numeric(raw.pitch_mm, "Pitch (mm)");
+    const e = numeric(raw.end_distance_mm, "End distance (mm)");
+    const g = numeric(raw.gauge_mm, "Gauge (mm)");
+    const a = numeric(angle.a_mm, "Connected leg (mm)");
+    const b = numeric(angle.b_mm, "Outstanding leg (mm)");
+    const t = numeric(angle.t_mm, "Angle thickness (mm)");
+    const Ag = numeric(angle.gross_area_mm2, "Gross area (mm²)");
+    if (fu <= fy) throw new Error("Ultimate stress fu must exceed yield stress fy.");
+    if (!Number.isInteger(n) || n < 2 || n > 30) throw new Error("Use 2 to 30 whole bolts in the single longitudinal line.");
+    if (t >= Math.min(a, b)) throw new Error("Angle thickness must be smaller than the leg widths.");
+    if (d >= a - t / 2) throw new Error("The hole is too large for the connected leg net section.");
+    if (!(d / 2 < g && g < a - d / 2)) throw new Error("Bolt hole must fit entirely inside the connected leg (gauge from heel).");
+    if (p < d) throw new Error("Pitch must be at least the hole diameter to avoid overlapping holes.");
+    if (e <= d / 2) throw new Error("End distance must exceed half the hole diameter.");
+
+    const tdg = Ag * fy / gammaM0 / 1000;
+    const Anc = (a - t / 2 - d) * t;
+    const Ago = (b - t / 2) * t;
+    const w = b;
+    const bs = w + g - t;
+    const Lc = (n - 1) * p;
+    const betaRaw = 1.4 - 0.076 * (w / t) * (fy / fu) * (bs / Lc);
+    const betaMax = 0.9 * fu * gammaM0 / (fy * gammaM1);
+    const beta = Math.min(Math.max(betaRaw, 0.7), betaMax);
+    const tdn = (0.9 * Anc * fu / gammaM1 + beta * Ago * fy / gammaM0) / 1000;
+    const Ls = e + Lc;
+    const Avg = Ls * t;
+    const Avn = (Ls - (n - 0.5) * d) * t;
+    const Atg = (a - g) * t;
+    const Atn = (a - g - d / 2) * t;
+    if (Math.min(Anc, Ago, Avg, Avn, Atg, Atn) <= 0) throw new Error("Net ligament/tear-out area is not positive; revise hole layout.");
+    const tdb1 = (Avg * fy / (Math.sqrt(3) * gammaM0) + 0.9 * Atn * fu / gammaM1) / 1000;
+    const tdb2 = (0.9 * Avn * fu / (Math.sqrt(3) * gammaM1) + Atg * fy / gammaM0) / 1000;
+    const tdb = Math.min(tdb1, tdb2);
+    const strength = Math.min(tdg, tdn, tdb);
+    const checks = {
+      "Yielding": { capacity_kn: tdg, status: force <= tdg + 1e-9 ? "Satisfies" : "Not Satisfy" },
+      "Rupture": { capacity_kn: tdn, status: force <= tdn + 1e-9 ? "Satisfies" : "Not Satisfy" },
+      "Block shear": { capacity_kn: tdb, status: force <= tdb + 1e-9 ? "Satisfies" : "Not Satisfy" },
+    };
+    const governing = tdg <= tdn && tdg <= tdb ? "Gross-section yielding"
+      : tdn <= tdb ? "Net-section rupture" : "Block shear";
+    return {
+      section: angle.section, angle, inputs: {force_kn:force, fy_mpa:fy, fu_mpa:fu, bolts_in_line:n, hole_diameter_mm:d,
+        pitch_mm:p, end_distance_mm:e, gauge_mm:g},
+      gross_yield_kn:tdg, net_rupture_kn:tdn, block_shear_kn:tdb,
+      block_case_1_kn:tdb1, block_case_2_kn:tdb2, design_strength_kn:strength,
+      utilization:force/strength, governing_mode:governing, overall_pass:force <= strength + 1e-9,
+      gross_area_mm2:Ag, connected_net_area_mm2:Anc, outstanding_gross_area_mm2:Ago,
+      beta_raw:betaRaw, beta_max:betaMax, beta_used:beta, w_mm:w, bs_mm:bs, lc_mm:Lc,
+      avg_mm2:Avg, avn_mm2:Avn, atg_mm2:Atg, atn_mm2:Atn, gamma_m0:gammaM0, gamma_m1:gammaM1, checks,
+    };
+  }
+  return { normalizeSection, findAngle, calculate };
+})();
+</script>
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const keys = ["force_kn","fy_mpa","fu_mpa","bolts_in_line","hole_diameter_mm","pitch_mm","end_distance_mm","gauge_mm"];
+  const defaults = Object.freeze({force_kn:"120",fy_mpa:"250",fu_mpa:"410",bolts_in_line:"3",hole_diameter_mm:"18",pitch_mm:"60",end_distance_mm:"40",gauge_mm:"35",section:"ISA 75x75x6"});
+  let current = null;
+  const f = n => Number(n).toFixed(2);
+  const f3 = n => Number(n).toFixed(3);
+  const safe = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  $("angleOptions").innerHTML = CATALOG.map(x => `<option value="${safe(x.section)}"></option>`).join("");
+  $("angleHint").textContent = "Available: " + CATALOG.map(x => x.section).join(" · ");
+  function read() {
+    const values = {section: $("section").value, steel_grade: $("steel_grade").value,
+      member_type: document.querySelector('input[name="member_type"]:checked').value};
+    for (const key of keys) values[key] = $(key).value.trim() === "" ? NaN : Number($(key).value);
+    return values;
+  }
+  function kv(label,value){return `<tr><th>${safe(label)}</th><td>${safe(value)}</td></tr>`;}
+  function render() {
+    current = null;
+    const inputs = read();
+    try {
+      if (inputs.member_type !== "Tensile member") {
+        $("message").className = "banner warn";
+        $("message").textContent = "Compression is not implemented. IS 800 Section 7 buckling/slenderness checks are required; do not apply the three tension checks to compression.";
+        $("calculated").classList.add("hidden"); $("saveButton").disabled = true; return;
+      }
+      const r = window.SteelCalculator.calculate(inputs, CATALOG);
+      current = r;
+      $("message").className = "banner success";
+      $("message").textContent = "Updated automatically for your current input values. Calculated results are read-only; change the inputs to recalculate.";
+      $("calculated").classList.remove("hidden"); $("saveButton").disabled = false;
+      $("checks").innerHTML = Object.entries(r.checks).map(([name, check]) => {
+        const pass = check.status === "Satisfies";
+        return `<div class="check ${pass?'pass':'fail'}"><div><b>${name} = <span class="result">${check.status}</span></b><br><small>${f(check.capacity_kn)} kN ${pass?'≥':'<'} ${f(r.inputs.force_kn)} kN applied</small></div><span aria-label="${pass?'pass':'fail'}">${pass?'✓':'✕'}</span></div>`;
+      }).join("");
+      $("capacity").textContent = f(r.design_strength_kn) + " kN";
+      $("ratio").textContent = f3(r.utilization);
+      $("overall").textContent = r.overall_pass ? "PASS" : "FAIL";
+      $("governing").innerHTML = "<b>Governing limit state:</b> " + safe(r.governing_mode);
+      const a = r.angle, d = r.inputs;
+      $("inputDetails").innerHTML = `<table>${kv("Selected angle",r.section)}${kv("Connected leg a",a.a_mm+" mm")}${kv("Outstanding leg b",a.b_mm+" mm")}${kv("Thickness t",a.t_mm+" mm")}${kv("Catalog gross area Ag",a.gross_area_mm2+" mm²")}${kv("Applied force",d.force_kn+" kN")}${kv("fy / fu",d.fy_mpa+" / "+d.fu_mpa+" MPa")}${kv("Number of bolts",d.bolts_in_line)}${kv("Hole diameter d₀",d.hole_diameter_mm+" mm")}${kv("Pitch p",d.pitch_mm+" mm")}${kv("End distance e",d.end_distance_mm+" mm")}${kv("Gauge g",d.gauge_mm+" mm")}${kv("γm0 / γm1","1.10 / 1.25")}</table><p class="fine"><a target="_blank" rel="noreferrer noopener" href="${safe(a.source_url)}">Section property source</a> (external reference; confirm against Steel Book).</p>`;
+      const steps = [
+        `<div class="step"><b>1. Gross-section yielding — Cl. 6.2</b><div class="formula">Tdg = Ag × fy / γm0 / 1000</div>${f(r.gross_area_mm2)} × ${f(d.fy_mpa)} / 1.10 / 1000 = <b>${f3(r.gross_yield_kn)} kN</b></div>`,
+        `<div class="step"><b>2. Net-section rupture — Cl. 6.3.3</b><div class="formula">Anc = (a − t/2 − d₀) × t<br>Ago = (b − t/2) × t</div>Anc = ${f(r.connected_net_area_mm2)} mm²; Ago = ${f(r.outstanding_gross_area_mm2)} mm².<div class="formula">bs = w + g − t; Lc = (n − 1) × p<br>β₀ = 1.4 − 0.076(w/t)(fy/fu)(bs/Lc)<br>β = min(max(β₀, 0.7), 0.9fu γm0 / (fy γm1))</div>w = ${f(r.w_mm)} mm; bs = ${f(r.bs_mm)} mm; Lc = ${f(r.lc_mm)} mm; β₀ = ${f3(r.beta_raw)}; cap = ${f3(r.beta_max)}; β = ${f3(r.beta_used)}.<div class="formula">Tdn = [0.9 Anc fu / γm1 + β Ago fy / γm0] / 1000</div><b>Tdn = ${f3(r.net_rupture_kn)} kN</b></div>`,
+        `<div class="step"><b>3. Block shear — Cl. 6.4.1 (one assumed path)</b><div class="formula">Ls = e + (n−1)p<br>Avg = Ls × t<br>Avn = [Ls − (n−0.5)d₀] × t<br>Atg = (a−g) × t<br>Atn = (a−g−d₀/2) × t</div>Avg = ${f(r.avg_mm2)} mm²; Avn = ${f(r.avn_mm2)} mm²; Atg = ${f(r.atg_mm2)} mm²; Atn = ${f(r.atn_mm2)} mm².<div class="formula">Tdb1 = [Avg fy/(√3 γm0) + 0.9 Atn fu/γm1] / 1000<br>Tdb2 = [0.9 Avn fu/(√3 γm1) + Atg fy/γm0] / 1000<br>Tdb = min(Tdb1, Tdb2)</div>Case 1 = ${f3(r.block_case_1_kn)} kN; Case 2 = ${f3(r.block_case_2_kn)} kN.<br><b>Tdb = ${f3(r.block_shear_kn)} kN</b></div>`,
+        `<div class="step"><b>4. Design check</b><div class="formula">Td = min(Tdg, Tdn, Tdb)<br>Utilization = Applied force / Td</div>Td = ${f3(r.design_strength_kn)} kN; Utilization = ${f3(r.utilization)}; <b>${r.overall_pass?'PASS':'FAIL'}</b>.</div>`
+      ];
+      $("workedSteps").innerHTML = steps.join("");
+      const failed = Object.entries(r.checks).filter(([,c])=>c.status !== "Satisfies").map(([name])=>name);
+      $("explanation").textContent = `The selected ${r.section} ${r.overall_pass?'satisfies':'does NOT satisfy'} the three evaluated tension checks for the assumed one-leg, one-bolt-line layout. The applied ${f(d.force_kn)} kN is compared with the smallest calculated strength ${f(r.design_strength_kn)} kN, governed by ${r.governing_mode.toLowerCase()}. ${failed.length?'Failed check(s): '+failed.join(', ')+'.':'All three checked strengths meet the applied load.'} This is not full connection or structural verification.`;
+    } catch (error) {
+      $("message").className = "banner error";
+      $("message").textContent = String(error.message || error);
+      $("calculated").classList.add("hidden"); $("saveButton").disabled = true;
+    }
+  }
+  document.querySelectorAll('input,select').forEach(el=>{el.addEventListener('input',render);el.addEventListener('change',render);});
+  $("defaultButton").addEventListener("click",()=>{Object.entries(defaults).forEach(([key,value])=>$(key).value=value);$("steel_grade").selectedIndex=0;document.querySelector('input[value="Tensile member"]').checked=true;render();});
+  document.querySelectorAll('[data-example]').forEach(button=>button.addEventListener("click",()=>{
+    $("defaultButton").click();
+    if(button.dataset.example === "fail") $("force_kn").value = "180";
+    if(button.dataset.example === "invalid") $("section").value = "ISA 79x79x7";
+    render();
+  }));
+  $("saveButton").addEventListener("click",()=>{
+    if(!current) return;
+    const data={...current,notice:"Educational tension member prototype; not full connection verification."};
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob); const a=document.createElement("a");a.href=url;a.download="steel_angle_result.json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  });
+  render();
+})();
+</script>
+</body>
+</html>
