@@ -39,11 +39,14 @@ table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}th,td{bor
 <body>
 <main>
 <header><span class="tag">FA-2 · INTERACTIVE OFFLINE CALCULATOR</span><h1>Steel Angle Tension Member Checker</h1><p>Educational demonstration — Python / Streamlit project companion preview · IS 800:2007</p></header>
-<div class="scope"><b>This preview is interactive.</b> Edit inputs below to recalculate instantly; no terminal required for the preview. This is a separately implemented browser calculator checked against the Python examples, not the Streamlit server. Only a single rolled angle bolted through one leg in one straight longitudinal bolt line is evaluated; confirm the IS standard and your Steel Book.</div>
+<div class="scope"><b>This preview is interactive.</b> Edit inputs below to recalculate instantly; no terminal required for the preview. This is a separately implemented browser calculator checked against the Python examples, not the Streamlit server. Supported: one single rolled angle, or two identical mirrored angles on opposite gusset faces with one shared straight through-bolt row and equal load. No bolt or gusset capacity verification; confirm your IS standard and Steel Book.</div>
 <div class="workspace">
 <section class="panel" aria-label="Editable project inputs">
   <h2>Editable design inputs <span class="status">LIVE</span></h2>
   <p class="subtle">Change any field. The three checks and formulas update automatically.</p>
+  <h3>Angle design</h3>
+  <div class="options"><label><input type="radio" name="angle_design" value="Single Angle" checked> Single Angle</label><label><input type="radio" name="angle_design" value="Double Angle"> Double Angle</label></div>
+  <p class="subtle" id="arrangementHint">Single rolled angle, bolted through one leg.</p>
   <h3>1. Choose structural member</h3>
   <div class="options"><label><input type="radio" name="member_type" value="Tensile member" checked> Tensile member</label><label><input type="radio" name="member_type" value="Compressive member"> Compressive member</label></div>
   <h3>2. Applied axial force</h3>
@@ -84,11 +87,23 @@ table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}th,td{bor
     <details class="details" open><summary>Step-by-step calculations</summary><div id="workedSteps"></div></details>
     <details class="details"><summary>Inputs and section properties</summary><div id="inputDetails"></div></details>
     <h3>Educational explanation</h3><p id="explanation" class="fine"></p>
+    <h3>6. Steel Table & Bolt Suggestions (preliminary)</h3>
+    <p class="subtle">Searches the limited section catalog and counts 2–30 bolts. Section yielding, rupture, block shear, bolt shear, angle/gusset bearing and long-joint reduction are checked for the stated arrangement. Not a complete connection design.</p>
+    <div class="cols">
+      <div><label class="label" for="suggestArea">Required total area mm² (0=auto)</label><input type="number" id="suggestArea" value="0" min="0" step="100"></div>
+      <div><label class="label" for="suggestBoltD">Bolt diameter</label><select id="suggestBoltD"><option value="12">M12</option><option value="16" selected>M16</option><option value="20">M20</option><option value="24">M24</option></select></div>
+      <div><label class="label" for="suggestBoltGrade">Bolt grade</label><select id="suggestBoltGrade"><option value="400">4.6 (fub=400 MPa)</option><option value="800">8.8 (fub=800 MPa)</option></select></div>
+      <div><label class="label" for="suggestGussetT">Gusset thickness mm</label><input id="suggestGussetT" type="number" value="10" min="1"></div>
+      <div><label class="label" for="suggestGussetFu">Gusset fu MPa</label><input id="suggestGussetFu" type="number" value="410" min="1"></div>
+    </div>
+    <div id="suggestResult" class="fine"></div>
+    <p class="fine">Preliminary only: verify bolt threads, real Steel Book, edge type, gusset net/block shear, all detailing, shear lag, eccentricity and slenderness from the actual sketch. A green result does not mean full structural safety.</p>
+
     <div class="banner warn"><b>Limits:</b> This PASS only covers the three implemented checks for the assumed bolt layout. It does not verify all possible block-shear paths, bolt strength/bearing, gusset capacity, detailing or member slenderness. Academic/professional verification using the actual standard and Steel Book is still required.</div>
   </div>
 </section>
 </div>
-<p class="fine">Reference provisions: IS 800:2007 Clauses 6.2 (gross yielding), 6.3.3 (single-angle rupture with shear lag), 6.4.1 (block shear), Table 5 (partial factors). The clause 6.3.3 beta cap is adjusted for Amendment No. 1 (2012). Source data: section shortlist from the project's data/angles.csv, which must be compared with your institution's Steel Book. This preview uses the same equations as engine.py but is an independent JavaScript implementation for offline use.</p>
+<p class="fine">Reference provisions: IS 800:2007 Clauses 6.2 (gross yielding), 6.3.3 (single-angle rupture with shear lag), 6.3.4 (double-angle rupture), 6.4.1 (block shear), Table 5 (partial factors). The clause 6.3.3 beta cap is adjusted for Amendment No. 1 (2012). Source data: section shortlist from the project's data/angles.csv, which must be compared with your institution's Steel Book. This preview uses the same equations as engine.py but is an independent JavaScript implementation for offline use.</p>
 </main>
 <script>const CATALOG = /*CATALOG_JSON*/;</script>
 <script id="engine-script">/*CALCULATOR_ENGINE_JS*/</script>
@@ -99,6 +114,7 @@ table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}th,td{bor
   const keys = ["force_kn","fy_mpa","fu_mpa","bolts_in_line","hole_diameter_mm","pitch_mm","end_distance_mm","gauge_mm"];
   const defaults = Object.freeze({force_kn:"120",fy_mpa:"250",fu_mpa:"410",bolts_in_line:"3",hole_diameter_mm:"18",pitch_mm:"60",end_distance_mm:"40",gauge_mm:"35",section:"ISA 75x75x6"});
   let current = null;
+  let recommendations = null;
   const f = n => Number(n).toFixed(2);
   const f3 = n => Number(n).toFixed(3);
   const safe = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -106,11 +122,31 @@ table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}th,td{bor
   $("angleHint").textContent = "Available: " + CATALOG.map(x => x.section).join(" · ");
   function read() {
     const values = {section: $("section").value, steel_grade: $("steel_grade").value,
-      member_type: document.querySelector('input[name="member_type"]:checked').value};
+      member_type: document.querySelector('input[name="member_type"]:checked').value,
+      angle_design: document.querySelector('input[name="angle_design"]:checked').value};
     for (const key of keys) values[key] = $(key).value.trim() === "" ? NaN : Number($(key).value);
     return values;
   }
   function kv(label,value){return `<tr><th>${safe(label)}</th><td>${safe(value)}</td></tr>`;}
+  function renderSuggestions(inputs) {
+    recommendations=null;
+    const result=$("suggestResult");
+    try {
+      const ans=window.SteelCalculator.recommend(inputs,CATALOG,{
+        required_area_mm2:Number($("suggestArea").value),
+        bolt_d_mm:Number($("suggestBoltD").value),
+        bolt_fub_mpa:Number($("suggestBoltGrade").value),
+        gusset_t_mm:Number($("suggestGussetT").value),
+        gusset_fu_mpa:Number($("suggestGussetFu").value)});
+      recommendations=ans;
+      const b=ans.selected_bolt;
+      const rows=ans.rows.map(x=>`<tr><td>${safe(x.number_of_angles+' x '+x.section)}</td><td>${f(x.total_area_mm2)}</td><td>${x.bolts}</td><td>${f(x.gross_yield_kn)}</td><td>${f(x.net_rupture_kn)}</td><td>${f(x.block_shear_kn)}</td><td>${f(x.bolt_group_capacity_kn)}</td><td>${f3(x.utilization)}</td></tr>`).join("");
+      result.innerHTML = `<div class="banner warn">Yielding-only minimum gross area: <b>${f(ans.minimum_yield_area_mm2)} mm²</b><br>Current bolt group (${b.count} bolts): <b>${f(b.group_capacity_kn)} kN</b> — ${safe(b.status)}.<br>Thread-root area ≈ ${f(b.net_thread_area_mm2)} mm²; shear planes ${b.shear_planes}; βlj ${f3(b.long_joint_factor)}; shear ${f(b.shear_per_bolt_kn)} kN/bolt; angle bearing ${f(b.bearing_angles_per_bolt_kn)} kN/bolt; gusset bearing ${f(b.bearing_gusset_per_bolt_kn)} kN/bolt.</div>`+
+        (rows?`<div style="overflow:auto"><table><thead><tr><th>Angle(s)</th><th>Total area mm²</th><th>Min bolts</th><th>Yield kN</th><th>Rupture kN</th><th>Block kN</th><th>Bolt group kN</th><th>Utilization</th></tr></thead><tbody>${rows}</tbody></table></div>`:
+        `<div class="banner warn">No matches in the small current catalog (up to 30 bolts). Recheck area, bolt layout and requested load.</div>`);
+    }catch(error){result.innerHTML=`<div class="banner warn">${safe(error.message||String(error))}</div>`;}
+  }
+
   function render() {
     current = null;
     const inputs = read();
@@ -120,10 +156,17 @@ table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}th,td{bor
         $("message").textContent = "Compression is not implemented. IS 800 Section 7 buckling/slenderness checks are required; do not apply the three tension checks to compression.";
         $("calculated").classList.add("hidden"); $("saveButton").disabled = true; return;
       }
-      const r = window.SteelCalculator.calculate(inputs, CATALOG);
+      const isDouble = inputs.angle_design === "Double Angle";
+      const r = isDouble ? window.SteelCalculator.calculateDouble(inputs, CATALOG)
+                         : window.SteelCalculator.calculate(inputs, CATALOG);
+      $("arrangementHint").textContent = isDouble ?
+        "Supported Double Angle: two identical mirrored angles on opposite gusset faces, one through-bolt row, equal load. Bolt and gusset checks excluded." :
+        "Single rolled angle bolted through one connected leg.";
       current = r;
       $("message").className = "banner success";
-      $("message").textContent = "Updated automatically for your current input values. Calculated results are read-only; change the inputs to recalculate.";
+      $("message").textContent = isDouble ?
+        "Double Angle calculation (symmetric opposite-gusset configuration only). Equal force per angle = " + f(inputs.force_kn / 2) + " kN; bolt/gusset strength is NOT checked." :
+        "Updated automatically for your current input values. Calculated results are read-only; change the inputs to recalculate.";
       $("calculated").classList.remove("hidden"); $("saveButton").disabled = false;
       $("checks").innerHTML = Object.entries(r.checks).map(([name, check]) => {
         const pass = check.status === "Satisfies";
@@ -134,16 +177,17 @@ table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}th,td{bor
       $("overall").textContent = r.overall_pass ? "PASS" : "FAIL";
       $("governing").innerHTML = "<b>Governing limit state:</b> " + safe(r.governing_mode);
       const a = r.angle, d = r.inputs;
-      $("inputDetails").innerHTML = `<table>${kv("Selected angle",r.section)}${kv("Connected leg a",a.a_mm+" mm")}${kv("Outstanding leg b",a.b_mm+" mm")}${kv("Thickness t",a.t_mm+" mm")}${kv("Catalog gross area Ag",a.gross_area_mm2+" mm²")}${kv("Applied force",d.force_kn+" kN")}${kv("fy / fu",d.fy_mpa+" / "+d.fu_mpa+" MPa")}${kv("Number of bolts",d.bolts_in_line)}${kv("Hole diameter d₀",d.hole_diameter_mm+" mm")}${kv("Pitch p",d.pitch_mm+" mm")}${kv("End distance e",d.end_distance_mm+" mm")}${kv("Gauge g",d.gauge_mm+" mm")}${kv("γm0 / γm1","1.10 / 1.25")}</table><p class="fine"><a target="_blank" rel="noreferrer noopener" href="${safe(a.source_url)}">Section property source</a> (external reference; confirm against Steel Book).</p>`;
+      $("inputDetails").innerHTML = `<table>${kv("Angle design",isDouble?"Double Angle (2 x identical)":"Single Angle")}${kv("Selected angle",isDouble?"2 x "+r.section:r.section)}${kv("Connection",isDouble?r.arrangement:"One angle connected through one leg")}${kv("Connected leg a",a.a_mm+" mm")}${kv("Outstanding leg b",a.b_mm+" mm")}${kv("Thickness t",a.t_mm+" mm")}${kv("Total gross area Ag",r.gross_area_mm2+" mm²")}${kv("Applied force",d.force_kn+" kN")}${kv("fy / fu",d.fy_mpa+" / "+d.fu_mpa+" MPa")}${kv("Number of bolts",d.bolts_in_line)}${kv("Hole diameter d₀",d.hole_diameter_mm+" mm")}${kv("Pitch p",d.pitch_mm+" mm")}${kv("End distance e",d.end_distance_mm+" mm")}${kv("Gauge g",d.gauge_mm+" mm")}${kv("γm0 / γm1","1.10 / 1.25")}</table><p class="fine"><a target="_blank" rel="noreferrer noopener" href="${safe(a.source_url)}">Section property source</a> (external reference; confirm against Steel Book).</p>`;
       const steps = [
         `<div class="step"><b>1. Gross-section yielding — Cl. 6.2</b><div class="formula">Tdg = Ag × fy / γm0 / 1000</div>${f(r.gross_area_mm2)} × ${f(d.fy_mpa)} / 1.10 / 1000 = <b>${f3(r.gross_yield_kn)} kN</b></div>`,
-        `<div class="step"><b>2. Net-section rupture — Cl. 6.3.3</b><div class="formula">Anc = (a − t/2 − d₀) × t<br>Ago = (b − t/2) × t</div>Anc = ${f(r.connected_net_area_mm2)} mm²; Ago = ${f(r.outstanding_gross_area_mm2)} mm².<div class="formula">bs = w + g − t; Lc = (n − 1) × p<br>β₀ = 1.4 − 0.076(w/t)(fy/fu)(bs/Lc)<br>β = min(max(β₀, 0.7), 0.9fu γm0 / (fy γm1))</div>w = ${f(r.w_mm)} mm; bs = ${f(r.bs_mm)} mm; Lc = ${f(r.lc_mm)} mm; β₀ = ${f3(r.beta_raw)}; cap = ${f3(r.beta_max)}; β = ${f3(r.beta_used)}.<div class="formula">Tdn = [0.9 Anc fu / γm1 + β Ago fy / γm0] / 1000</div><b>Tdn = ${f3(r.net_rupture_kn)} kN</b></div>`,
-        `<div class="step"><b>3. Block shear — Cl. 6.4.1 (one assumed path)</b><div class="formula">Ls = e + (n−1)p<br>Avg = Ls × t<br>Avn = [Ls − (n−0.5)d₀] × t<br>Atg = (a−g) × t<br>Atn = (a−g−d₀/2) × t</div>Avg = ${f(r.avg_mm2)} mm²; Avn = ${f(r.avn_mm2)} mm²; Atg = ${f(r.atg_mm2)} mm²; Atn = ${f(r.atn_mm2)} mm².<div class="formula">Tdb1 = [Avg fy/(√3 γm0) + 0.9 Atn fu/γm1] / 1000<br>Tdb2 = [0.9 Avn fu/(√3 γm1) + Atg fy/γm0] / 1000<br>Tdb = min(Tdb1, Tdb2)</div>Case 1 = ${f3(r.block_case_1_kn)} kN; Case 2 = ${f3(r.block_case_2_kn)} kN.<br><b>Tdb = ${f3(r.block_shear_kn)} kN</b></div>`,
+        `<div class="step"><b>2. Net-section rupture — Cl. ${isDouble?'6.3.4 via 6.3.3':'6.3.3'}</b><div class="formula">${isDouble?'Anc,total = 2(a − t/2 − d₀)t; Ago,total = 2(b − t/2)t':'Anc = (a − t/2 − d₀)t; Ago = (b − t/2)t'}</div>Anc = ${f(r.connected_net_area_mm2)} mm²; Ago = ${f(r.outstanding_gross_area_mm2)} mm².<div class="formula">bs = w + g − t; Lc = (n − 1) × p<br>β₀ = 1.4 − 0.076(w/t)(fy/fu)(bs/Lc)<br>β = min(max(β₀, 0.7), 0.9fu γm0 / (fy γm1))</div>w = ${f(r.w_mm)} mm; bs = ${f(r.bs_mm)} mm; Lc = ${f(r.lc_mm)} mm; β₀ = ${f3(r.beta_raw)}; cap = ${f3(r.beta_max)}; β = ${f3(r.beta_used)}.<div class="formula">Tdn = [0.9 Anc fu / γm1 + β Ago fy / γm0] / 1000</div><b>Tdn = ${f3(r.net_rupture_kn)} kN</b></div>`,
+        `<div class="step"><b>3. Block shear — Cl. 6.4.1 (one assumed path)</b><div class="formula">Ls = e + (n−1)p<br>Avg = ${isDouble?'2 × ':''}Ls × t<br>Avn = ${isDouble?'2 × ':''}[Ls − (n−0.5)d₀] × t<br>Atg = ${isDouble?'2 × ':''}(a−g) × t<br>Atn = ${isDouble?'2 × ':''}(a−g−d₀/2) × t</div>Avg = ${f(r.avg_mm2)} mm²; Avn = ${f(r.avn_mm2)} mm²; Atg = ${f(r.atg_mm2)} mm²; Atn = ${f(r.atn_mm2)} mm².<div class="formula">Tdb1 = [Avg fy/(√3 γm0) + 0.9 Atn fu/γm1] / 1000<br>Tdb2 = [0.9 Avn fu/(√3 γm1) + Atg fy/γm0] / 1000<br>Tdb = min(Tdb1, Tdb2)</div>Case 1 = ${f3(r.block_case_1_kn)} kN; Case 2 = ${f3(r.block_case_2_kn)} kN.<br><b>Tdb = ${f3(r.block_shear_kn)} kN</b></div>`,
         `<div class="step"><b>4. Design check</b><div class="formula">Td = min(Tdg, Tdn, Tdb)<br>Utilization = Applied force / Td</div>Td = ${f3(r.design_strength_kn)} kN; Utilization = ${f3(r.utilization)}; <b>${r.overall_pass?'PASS':'FAIL'}</b>.</div>`
       ];
       $("workedSteps").innerHTML = steps.join("");
       const failed = Object.entries(r.checks).filter(([,c])=>c.status !== "Satisfies").map(([name])=>name);
-      $("explanation").textContent = `The selected ${r.section} ${r.overall_pass?'satisfies':'does NOT satisfy'} the three evaluated tension checks for the assumed one-leg, one-bolt-line layout. The applied ${f(d.force_kn)} kN is compared with the smallest calculated strength ${f(r.design_strength_kn)} kN, governed by ${r.governing_mode.toLowerCase()}. ${failed.length?'Failed check(s): '+failed.join(', ')+'.':'All three checked strengths meet the applied load.'} This is not full connection or structural verification.`;
+      $("explanation").textContent = `The selected ${isDouble?'TWO identical mirrored ':''}${r.section} ${r.overall_pass?'satisfies':'does NOT satisfy'} the three evaluated tension checks for the assumed ${isDouble?'symmetric opposite-gusset twin-angle, through-bolt-line, equal-load':'one-leg, one-bolt-line'} layout. The applied ${f(d.force_kn)} kN is compared with the smallest calculated strength ${f(r.design_strength_kn)} kN, governed by ${r.governing_mode.toLowerCase()}. ${failed.length?'Failed check(s): '+failed.join(', ')+'.':'All three checked strengths meet the applied load.'} This is not full connection or structural verification.`;
+      renderSuggestions(inputs);
     } catch (error) {
       $("message").className = "banner error";
       $("message").textContent = String(error.message || error);
@@ -151,7 +195,7 @@ table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}th,td{bor
     }
   }
   document.querySelectorAll('input,select').forEach(el=>{el.addEventListener('input',render);el.addEventListener('change',render);});
-  $("defaultButton").addEventListener("click",()=>{Object.entries(defaults).forEach(([key,value])=>$(key).value=value);$("steel_grade").selectedIndex=0;document.querySelector('input[value="Tensile member"]').checked=true;render();});
+  $("defaultButton").addEventListener("click",()=>{Object.entries(defaults).forEach(([key,value])=>$(key).value=value);$("steel_grade").selectedIndex=0;document.querySelector('input[value="Tensile member"]').checked=true;document.querySelector('input[value="Single Angle"]').checked=true;render();});
   document.querySelectorAll('[data-example]').forEach(button=>button.addEventListener("click",()=>{
     $("defaultButton").click();
     if(button.dataset.example === "fail") $("force_kn").value = "180";
@@ -160,7 +204,7 @@ table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}th,td{bor
   }));
   $("saveButton").addEventListener("click",()=>{
     if(!current) return;
-    const data={...current,notice:"Educational tension member prototype; not full connection verification."};
+    const data={...current,suggestions:recommendations,notice:"Preliminary tension member and bolt checks only; not a complete connection design."};
     const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob); const a=document.createElement("a");a.href=url;a.download="steel_angle_result.json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });

@@ -153,3 +153,56 @@ README.md                  This guide
 available as readable attachments here.** Before academic submission, check the
 values and paths against those supplied documents; do not claim this matches the
 unseen worked images exactly.
+
+
+## Double-angle tension mode (limited supported arrangement)
+
+Select **Double Angle** in the Streamlit app or the standalone `preview.html`.
+The implementation is for **two identical mirrored angles on opposite faces of one
+common end gusset**, bolted through one connected leg each with **one aligned
+straight through-bolt row**, matching materials and hole geometry, and equal load
+sharing. A factored member force `T` is compared with combined capacities.
+
+- Gross yielding: `Tdg,2 = 2 Ag fy / gamma_m0` (IS 800:2007, 6.2).
+- Rupture: `Tdn,2 = 2[0.9 Anc fu/gamma_m1 + beta Ago fy/gamma_m0]`
+  (6.3.4 refers to 6.3.3 for shear lag; `bs` measured to the farthest
+  outstanding-leg edge, same per-angle geometry in this symmetric case).
+- Bolted angle tearout/block shear: `Tdb,2 = 2 min(Tdb1, Tdb2)` for the
+  explicitly assumed **independent, identical** shear/tension tear-out path
+  of each angle (6.4.1).
+- `T_design = min(Tdg,2, Tdn,2, Tdb,2)`. All pass/fail checks use **TOTAL**
+  member factored force, **not** the half-force.
+
+**Not supported:** two angles on the same gusset face, dissimilar angle sizes,
+other bolt patterns, welded connections, other block-shear paths, eccentric
+load distribution, compression. Bolt shear/bearing, gusset net section, gusset
+block shear, spacing/clearance, slenderness and all connection details are not
+checked. Therefore member PASS is not design approval. Obtain the student's
+actual example/connection sketch before claiming a general double-angle design.
+
+After modifying the offline preview source, regenerate and test:
+
+```powershell
+py tools/build_preview.py
+node tests/test_preview.js
+py -m unittest discover -s tests -v
+```
+
+
+## Preliminary Steel Angle Suggestions (Streamlit)
+
+Suggestions compare the eleven angle sizes currently in `data/angles.csv` and
+search 2–30 bearing bolts in one longitudinal row. The search compares total
+gross area, section yielding, net-section rupture, modeled block shear,
+threaded-plane bolt shear (single vs double shear), angle bearing, gusset bearing
+and long-joint reduction. Inputs include applied force, requested area, bolt
+diameter/grade, steel strengths and gusset thickness/strength.
+
+Only a *preliminary educational shortlist* is provided. This is NOT a complete
+connection design. Edge preparation is assumed machined; check all IS 800
+detailing, thread root area, packing, bolt spacing, grip and joint geometry,
+alternate block paths, gusset net/block shear, eccentricity, slenderness,
+member effective length and all applicable load cases independently.
+
+Both the Streamlit app and regenerated standalone browser `preview.html`
+include automatic preliminary bolt/section suggestions.

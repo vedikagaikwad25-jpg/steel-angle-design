@@ -33,4 +33,32 @@ assert.throws(()=>calc({...base,gauge_mm:73}),/fit entirely/);
 assert.throws(()=>calc({...base,fu_mpa:200}),/must exceed yield/);
 assert.throws(()=>calc({...base,force_kn:0}),/positive finite/);
 assert.throws(()=>calc({...base,member_type:'Compressive member'}),/Compression needs/);
-console.log('PASS: 3 independent cases + 7 browser-engine validation / change checks');
+const single120 = calc(base);
+const double120 = scope.window.SteelCalculator.calculateDouble({member_type:'Tensile member',fy_mpa:250,fu_mpa:410,...base},catalog);
+for (const key of ['gross_yield_kn','net_rupture_kn','block_shear_kn','design_strength_kn',
+  'gross_area_mm2','connected_net_area_mm2','outstanding_gross_area_mm2',
+  'avg_mm2','avn_mm2','atg_mm2','atn_mm2']) close(double120[key],2*single120[key]);
+assert.equal(double120.angle_count,2);
+assert.equal(double120.inputs.force_kn,120);
+assert.equal(double120.overall_pass,true);
+assert.equal(double120.checks.Yielding.status,'Satisfies');
+const doubleFail=scope.window.SteelCalculator.calculateDouble({member_type:'Tensile member',fy_mpa:250,fu_mpa:410,...base,force_kn:360},catalog);
+assert.equal(doubleFail.overall_pass,false);
+assert.equal(doubleFail.checks['Block shear'].status,'Not Satisfy');
+assert.throws(()=>scope.window.SteelCalculator.calculateDouble({member_type:'Tensile member',fy_mpa:250,fu_mpa:410,...base,section:'bad'},catalog),/please select correct section/);
+
+const preliminary=scope.window.SteelCalculator.recommend(
+  {member_type:'Tensile member',angle_design:'Double Angle',fy_mpa:250,fu_mpa:410,
+   ...base,force_kn:240},catalog,
+  {bolt_d_mm:16,bolt_fub_mpa:400,gusset_t_mm:10,gusset_fu_mpa:410,required_area_mm2:0});
+assert(Math.abs(preliminary.minimum_yield_area_mm2-1056)<0.000001);
+assert.equal(preliminary.selected_bolt.shear_planes,2);
+assert.equal(preliminary.selected_bolt.status,'Not Satisfy');
+assert(preliminary.rows.length>=1);
+assert(preliminary.rows.every(x=>x.bolts>=2 && x.total_area_mm2>=1056 && x.governing_capacity_kn>=240));
+assert.throws(()=>scope.window.SteelCalculator.recommend(
+  {member_type:'Tensile member',angle_design:'Double Angle',fy_mpa:250,fu_mpa:410,
+   ...base,force_kn:240},catalog,
+  {bolt_d_mm:20,bolt_fub_mpa:400,gusset_t_mm:10,gusset_fu_mpa:410,required_area_mm2:0}),/hole diameter/);
+console.log('PASS: existing single/double reference cases + preliminary bolt/section suggestion checks');
+
